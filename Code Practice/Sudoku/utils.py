@@ -1,4 +1,5 @@
 import collections
+import math
 
 rows = 'ABCDEFGHI'
 cols = '123456789'
@@ -10,8 +11,14 @@ boxes = cross(rows, cols)
 
 row_units = [cross(r, cols) for r in rows]
 column_units = [cross(rows, c) for c in cols]
+diagonal_1 = [rows[i] + cols[i] for i in range(len(row_units))]
+diagonal_2 = [rows[i] + cols[::-1][i] for i in range(len(row_units))]
+
+
 square_units = [cross(rs, cs) for rs in ('ABC','DEF','GHI') for cs in ('123','456','789')]
 unitlist = row_units + column_units + square_units
+unitlist.append(diagonal_1)
+unitlist.append(diagonal_2)
 units = dict((s, [u for u in unitlist if s in u]) for s in boxes)
 peers = dict((s, set(sum(units[s],[]))-set([s])) for s in boxes)
 
@@ -67,9 +74,12 @@ def eliminate(values):
     solved_values = {unit_key for (unit_key, unit_value) in values.items() if len(unit_value) == 1}
 
     for box in solved_values:
+
         box_value = values[box]
+
         for peer in peers[box]:
-            values[peer] = values[peer].replace(box_value, '')
+            if values[peer] != box_value:
+                values[peer] = values[peer].replace(box_value, '')
 
     return values
 
@@ -119,6 +129,7 @@ def only_choice(values):
 
 def reduce_puzzle(values):
 
+
     stalled = False
     while not stalled:
 
@@ -137,3 +148,28 @@ def reduce_puzzle(values):
             return False
 
     return values
+
+def search(values):
+    "Using depth-first search and propagation, create a search tree and solve the sudoku."
+    # First, reduce the puzzle using the previous function
+    values = reduce_puzzle(values)
+
+    if values is False:
+        return False;
+    if all(len(values[s]) == 1 for s in boxes):
+        return values
+
+    # Choose one of the unfilled squares with the fewest possibilities
+    box_val_len, box_key = min([(len(values[s]), s) for s in boxes if (len(values[s]) > 1)])
+
+    # Now use recursion to solve each one of the resulting sudokus, and if one returns a value (not False), return that answer!
+    for digit in values[box_key]:
+
+        new_sudoku = values.copy()
+        new_sudoku[box_key] = digit
+
+        values_new_sudoku = search(new_sudoku)
+
+        if values_new_sudoku:
+            return values_new_sudoku
+
