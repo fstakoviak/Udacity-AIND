@@ -72,7 +72,6 @@ def eliminate(values):
     Returns:
         Resulting Sudoku in dictionary form after eliminating values.
     """
-
     solved_values = {unit_key for (unit_key, unit_value) in values.items() if len(unit_value) == 1}
 
     for box in solved_values:
@@ -138,8 +137,11 @@ def reduce_puzzle(values):
         # Check how many boxes have a determined value
         solved_values_before = len([box for box in values.keys() if len(values[box]) == 1])
 
+        naked_twins(values)
         eliminate(values)
+        naked_twins(values)
         only_choice(values)
+        naked_twins(values)
 
         # Check how many boxes have a determined value, to compare
         solved_values_after = len([box for box in values.keys() if len(values[box]) == 1])
@@ -178,26 +180,35 @@ def search(values):
 
 def naked_twins(values):
 
-    values = eliminate(values)
-
     twins_candidate = {unit_key : unit_value for (unit_key, unit_value) in values.items() if len(unit_value) == 2}
 
-    print (twins_candidate)
+    while len(twins_candidate) > 1:
 
-    if len(twins_candidate) > 1:
+        print(twins_candidate)
+
         x_key, x_value = twins_candidate.popitem()
         x_candidates = [unit_key for (unit_key, unit_value) in twins_candidate.items() if unit_value == x_value]
 
         if len(x_candidates) > 0:
             for y in units[x_key]:
-                y_candidates = [k for k in y if k not in x_candidates and k != x_key and len(values[k]) > 1]
+                #describe var names later
+                r = [k for k in y if k not in x_candidates]
+                if (len(r) < len(y)):
+                    for z in r:
+                        print (x_key + '------' + z)
+                        if len(values[z]) > 1 and values[z] != x_value:
+                            print (x_value)
+                            print (values[z])
+                            for digit in x_value:
+                                values[z] = values[z].replace(digit, '')
+                            print(values[z])
 
-                if len(y_candidates) < len(y):
-                    for z in y_candidates:
-                        for digit in x_value:
-                            values[z] = values[z].replace(digit, '')
+                # y_not_twins = [k for k in y if k not in x_candidates and k != x_key and len(values[k]) > 1]
+                #
+                # for z in y_not_twins:
+                #     for digit in x_value:
+                #         values[z] = values[z].replace(digit, '')
 
-                    return values
-
-
+    print('a')
+    print(values)
     return values
