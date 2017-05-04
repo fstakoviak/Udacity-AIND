@@ -17,8 +17,10 @@ diagonal_2 = [rows[i] + cols[::-1][i] for i in range(len(row_units))]
 
 square_units = [cross(rs, cs) for rs in ('ABC','DEF','GHI') for cs in ('123','456','789')]
 unitlist = row_units + column_units + square_units
+
 unitlist.append(diagonal_1)
 unitlist.append(diagonal_2)
+
 units = dict((s, [u for u in unitlist if s in u]) for s in boxes)
 peers = dict((s, set(sum(units[s],[]))-set([s])) for s in boxes)
 
@@ -173,3 +175,29 @@ def search(values):
         if values_new_sudoku:
             return values_new_sudoku
 
+
+def naked_twins(values):
+
+    values = eliminate(values)
+
+    twins_candidate = {unit_key : unit_value for (unit_key, unit_value) in values.items() if len(unit_value) == 2}
+
+    print (twins_candidate)
+
+    if len(twins_candidate) > 1:
+        x_key, x_value = twins_candidate.popitem()
+        x_candidates = [unit_key for (unit_key, unit_value) in twins_candidate.items() if unit_value == x_value]
+
+        if len(x_candidates) > 0:
+            for y in units[x_key]:
+                y_candidates = [k for k in y if k not in x_candidates and k != x_key and len(values[k]) > 1]
+
+                if len(y_candidates) < len(y):
+                    for z in y_candidates:
+                        for digit in x_value:
+                            values[z] = values[z].replace(digit, '')
+
+                    return values
+
+
+    return values
