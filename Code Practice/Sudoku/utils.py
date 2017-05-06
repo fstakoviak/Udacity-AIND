@@ -18,8 +18,8 @@ diagonal_2 = [rows[i] + cols[::-1][i] for i in range(len(row_units))]
 square_units = [cross(rs, cs) for rs in ('ABC','DEF','GHI') for cs in ('123','456','789')]
 unitlist = row_units + column_units + square_units
 
-unitlist.append(diagonal_1)
-unitlist.append(diagonal_2)
+# unitlist.append(diagonal_1)
+# unitlist.append(diagonal_2)
 
 units = dict((s, [u for u in unitlist if s in u]) for s in boxes)
 peers = dict((s, set(sum(units[s],[]))-set([s])) for s in boxes)
@@ -72,20 +72,15 @@ def eliminate(values):
     Returns:
         Resulting Sudoku in dictionary form after eliminating values.
     """
+    solved_values = {unit_key for (unit_key, unit_value) in values.items() if len(unit_value) == 1}
 
-    if len([unit_key for (unit_key, unit_value) in values.items() if len(unit_value) > 1]) > 0:
+    for box in solved_values:
 
-        solved_values = {unit_key for (unit_key, unit_value) in values.items() if len(unit_value) == 1}
+        box_value = values[box]
 
-        for box in solved_values:
-
-            box_value = values[box]
-
-            for peer in peers[box]:
-                if values[peer] != box_value:
-                    values[peer] = values[peer].replace(box_value, '')
-    else:
-        print ('not')
+        for peer in peers[box]:
+            if values[peer] != box_value:
+                values[peer] = values[peer].replace(box_value, '')
 
     return values
 
@@ -99,60 +94,53 @@ def only_choice(values):
     Output: Resulting Sudoku in dictionary form after filling in only choices.
     """
 
-    unsolved_boxes = [unit_key for unit_key in boxes if len(values[unit_key]) > 1]
+    # for unit_key in unsolved_boxes:
+    #     for unit_boxes in units[unit_key]:
+    #         if len([k for k in unit_boxes if len(values[k]) > 1]) == 1:
+    #             box_current_value = values[unit_key]
+    #             unit_values = [v for (k, v) in values.items() if k in unit_boxes and k != unit_key]
+    #             print('===========')
+    #             print (unit_key)
+    #             print (box_current_value)
+    #             print (unit_boxes)
+    #             print(unit_values)
+    #             print('=')
+    #             box_new_value = [k for k in list(box_current_value) if k not in unit_values][0]
+    #             print(box_new_value)
+    #             print('===========')
+    #
+    #             values[unit_key] = box_new_value
+    #
+    #             break
 
-    print (unsolved_boxes)
+    stalled = False
+    while not stalled:
 
-    for unit_key in unsolved_boxes:
-        for unit_boxes in units[unit_key]:
-            if len([k for k in unit_boxes if len(values[k]) > 1]) == 1:
-                box_current_value = values[unit_key]
-                unit_values = [v for (k, v) in values.items() if k in unit_boxes and k != unit_key]
-                print('===========')
-                print (unit_key)
-                print (box_current_value)
-                print (unit_boxes)
-                print(unit_values)
-                print('=')
-                box_new_value = [k for k in list(box_current_value) if k not in unit_values][0]
-                print(box_new_value)
-                print('===========')
+        solved_boxes_before = [unit_key for unit_key in boxes if len(values[unit_key]) > 1]
 
-                values[unit_key] = box_new_value
+        for unit in unitlist:
 
-                break
+            all_unit_digits = {unit_key: unit_value for (unit_key, unit_value) in values.items() if
+                               unit_key in unit and len(unit_value)}
 
-    # keep_going = True
-    #
-    # while keep_going:
-    #
-    #     keep_going = False
-    #
-    #     solved_boxes_before = len([unit_key for unit_key in values.keys() if len(values[unit_key]) == 1])
-    #
-    #     for unit in unitlist:
-    #
-    #         all_unit_digits = {unit_key: unit_value for (unit_key, unit_value) in values.items() if
-    #                            unit_key in unit and len(unit_value)}
-    #
-    #         all_unit_digits_str = ''.join(all_unit_digits.values())
-    #
-    #         digit_counter = {digit_key for (digit_key, digit_count) in collections.Counter(all_unit_digits_str).items()
-    #             if digit_count == 1}
-    #
-    #         for digit_key in digit_counter:
-    #             unit_keys = []
-    #             for unit_key in unit:
-    #
-    #                 if len(values[unit_key]) > 1 and values[unit_key].find(digit_key) > -1:
-    #                     unit_keys.append(unit_key)
-    #
-    #                 for u in unit_keys:
-    #                     values[u] = digit_key
-    #
-    #     solved_boxes_after = len([unit_key for unit_key in values.keys() if len(values[unit_key]) == 1])
-    #
-    #     keep_going = solved_boxes_before != solved_boxes_after
+            all_unit_digits_str = ''.join(all_unit_digits.values())
+
+            digit_counter = {digit_key for (digit_key, digit_count) in collections.Counter(all_unit_digits_str).items()
+                if digit_count == 1}
+
+            for digit_key in digit_counter:
+                unit_keys = []
+                for unit_key in unit:
+
+                    if len(values[unit_key]) > 1 and values[unit_key].find(digit_key) > -1:
+                        unit_keys.append(unit_key)
+
+                    for u in unit_keys:
+                        values[u] = digit_key
+
+        solved_boxes_after = [unit_key for unit_key in boxes if len(values[unit_key]) > 1]
+
+        stalled = solved_boxes_after == solved_boxes_after
 
     return values
 
@@ -163,32 +151,28 @@ def reduce_puzzle(values):
     while not stalled:
 
         # Check how many boxes have a determined value
-        solved_values_before = len([box for box in values.keys() if len(values[box]) == 1])
+        solved_values_before = len([box for box in boxes if len(values[box]) == 1])
 
-        print("Only Choice")
-        values = only_choice(values)
-        display(values)
-
-        print("Eliminate")
         values = eliminate(values)
-        display(values)
-
-        # print("Naked Twins")
+        values = only_choice(values)
         # values = naked_twins(values)
-        # display(values)
 
 
         # Check how many boxes have a determined value, to compare
         solved_values_after = len([box for box in values.keys() if len(values[box]) == 1])
         # If no new values were added, stop the loop.
         stalled = solved_values_before == solved_values_after
+
         # Sanity check, return False if there is a box with zero available values:
-        if len([box for box in values.keys() if len(values[box]) == 0]):
+        if len([box for box in boxes if len(values[box]) == 0]):
             return False
 
     return values
 
 def search(values):
+
+    print('called')
+
     "Using depth-first search and propagation, create a search tree and solve the sudoku."
     # First, reduce the puzzle using the previous function
     values = reduce_puzzle(values)
@@ -215,22 +199,50 @@ def search(values):
 
 def naked_twins(values):
 
-    twins_candidate = {unit_key: unit_value for (unit_key, unit_value) in values.items() if len(unit_value) == 2}
+    twins_candidate = set([unit_key for (unit_key, unit_value) in values.items() if len(unit_value) == 2])
 
     while len(twins_candidate) > 1:
 
-        x_key, x_value = twins_candidate.popitem()
-        # x_candidates = [unit_key for (unit_key, unit_value) in twins_candidate.items() if unit_value == x_value]
+        x_key = twins_candidate.pop()
+        x_value = values[x_key]
 
-        for unit_boxes in units[x_key]:
-            if len([unit_key for unit_key in unit_boxes if values[unit_key] == x_value]) == 2:
-                for box in unit_boxes:
-                    if len(values[box]) > 1 and values[box] != x_value:
-                        # print(x_value)
-                        # print(values[box])
-                        for digit in x_value:
-                            values[box] = values[box].replace(digit, '')
-                        # print(values[box])
+        # x_candidates = [unit_key for (unit_key, unit_value) in twins_candidate.items() if unit_value == x_value]
+        #
+        # if len([box for box in peers[x_key] if values[box] == x_value]) == 2:
+        #     for box in x_unit:
+        #         if len(values[box]) > 1 and values[box] != x_value:
+        #             for digit in x_value:
+        #                 values[box] = values[box].replace(digit, '')
+        #
+        if len(x_value) == 2:
+            for x_unit in units[x_key]:
+                if len([box for box in x_unit if values[box] == x_value]) == 2:
+                    for box in x_unit:
+                        if len(values[box]) > 1 and values[box] != x_value:
+                            for digit in x_value:
+                                values[box] = values[box].replace(digit, '')
+
+        # for peer_boxes in peers[x_key]:
+        #
+        #     x_candidate_twins = [box for box in twins_candidate if values[box] == x_value]
+        #     if len(x_candadidate_twins) == 1:
+        #         for box in peer_boxes:
+        #             if len(values[box]) > 1 and values[box] != x_value:
+        #                 # print(x_value)
+        #                 # print(values[box])
+        #                 for digit in x_value:
+        #                     values[box] = values[box].replace(digit, '')
+        #                 # print(values[box])
+        #
+
+            # if len([unit_key for unit_key in unit_boxes if values[unit_key] == x_value]) == 2:
+            #     for box in unit_boxes:
+            #         if len(values[box]) > 1 and values[box] != x_value:
+            #             # print(x_value)
+            #             # print(values[box])
+            #             for digit in x_value:
+            #                 values[box] = values[box].replace(digit, '')
+            #             # print(values[box])
 
         # if len(x_candidates) > 0:
         #     for unit_boxes in units[x_key]:
