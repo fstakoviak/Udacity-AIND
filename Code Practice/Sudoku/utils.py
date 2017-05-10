@@ -16,10 +16,10 @@ diagonal_2 = [rows[i] + cols[::-1][i] for i in range(len(row_units))]
 
 
 square_units = [cross(rs, cs) for rs in ('ABC','DEF','GHI') for cs in ('123','456','789')]
-unitlist = row_units + column_units + square_units
 
-# unitlist.append(diagonal_1)
-# unitlist.append(diagonal_2)
+unitlist = row_units + column_units + square_units
+unitlist.append(diagonal_2)
+unitlist.append(diagonal_1)
 
 units = dict((s, [u for u in unitlist if s in u]) for s in boxes)
 peers = dict((s, set(sum(units[s],[]))-set([s])) for s in boxes)
@@ -72,7 +72,7 @@ def eliminate(values):
     Returns:
         Resulting Sudoku in dictionary form after eliminating values.
     """
-    solved_values = {unit_key for (unit_key, unit_value) in values.items() if len(unit_value) == 1}
+    solved_values = [box for box in boxes if len(values[box]) == 1]
 
     for box in solved_values:
 
@@ -94,29 +94,25 @@ def only_choice(values):
     Output: Resulting Sudoku in dictionary form after filling in only choices.
     """
 
-    # for unit_key in unsolved_boxes:
-    #     for unit_boxes in units[unit_key]:
-    #         if len([k for k in unit_boxes if len(values[k]) > 1]) == 1:
-    #             box_current_value = values[unit_key]
-    #             unit_values = [v for (k, v) in values.items() if k in unit_boxes and k != unit_key]
-    #             print('===========')
-    #             print (unit_key)
-    #             print (box_current_value)
-    #             print (unit_boxes)
-    #             print(unit_values)
-    #             print('=')
-    #             box_new_value = [k for k in list(box_current_value) if k not in unit_values][0]
-    #             print(box_new_value)
-    #             print('===========')
-    #
-    #             values[unit_key] = box_new_value
-    #
-    #             break
+    """Finalize all values that are the only choice for a unit.
+
+    Go through all the units, and whenever there is a unit with a value
+    that only fits in one box, assign the value to this box.
+
+    Input: Sudoku in dictionary form.
+    Output: Resulting Sudoku in dictionary form after filling in only choices.
+    """
+    for unit in unitlist:
+        for digit in '123456789':
+            dplaces = [box for box in unit if digit in values[box]]
+            if len(dplaces) == 1:
+                values[dplaces[0]] = digit
+    return values
 
     stalled = False
     while not stalled:
 
-        solved_boxes_before = [unit_key for unit_key in boxes if len(values[unit_key]) > 1]
+        solved_boxes_before = len([unit_key for unit_key in boxes if len(values[unit_key]) == 1])
 
         for unit in unitlist:
 
@@ -138,9 +134,57 @@ def only_choice(values):
                     for u in unit_keys:
                         values[u] = digit_key
 
-        solved_boxes_after = [unit_key for unit_key in boxes if len(values[unit_key]) > 1]
+        solved_boxes_after = len([unit_key for unit_key in boxes if len(values[unit_key]) == 1])
 
-        stalled = solved_boxes_after == solved_boxes_after
+        stalled = solved_boxes_before == solved_boxes_after
+
+    return values
+
+
+def naked_twins(values):
+
+    # for u_key, u_value in units.items():
+    #     if len(values[u_key]) == 2:
+    #         for u in u_value:
+    #             if len([k for k in u if values[k] == values[u_key]]) == 2:
+    #                 for x in u:
+    #                     if values[x] != values[u_key] and len(values[x]) > 1:
+    #                         for d in values[u_key]:
+    #                             values[x] = values[x].replace(d, '')
+    #
+    # return values
+
+    stalled = False
+    while not stalled:
+
+        solved_boxes_before = len([unit_key for unit_key in boxes if len(values[unit_key]) == 1])
+
+        twins_candidate = [unit_key for (unit_key, unit_value) in values.items() if len(unit_value) == 2]
+
+        if len(twins_candidate) > 1:
+
+            x_key = twins_candidate.pop()
+
+            if len([k for k in peers[x_key] if values[k] == values[x_key]]) == 1:
+
+                x_value = values[x_key]
+
+                for x_unit in units[x_key]:
+                    if len([k for k in x_unit if values[k] == x_value]) == 2:
+                        for box in x_unit:
+                            if len(values[box]) > 1 and values[box] != x_value:
+
+                                old_value = values[box]
+
+                                for digit in x_value:
+                                    values[box] = values[box].replace(digit, '')
+
+                                if not is_valid(values):
+                                    values[box] = old_value
+
+        solved_boxes_after = len([unit_key for unit_key in boxes if len(values[unit_key]) == 1])
+
+        stalled = solved_boxes_before == solved_boxes_after
 
     return values
 
@@ -154,9 +198,8 @@ def reduce_puzzle(values):
         solved_values_before = len([box for box in boxes if len(values[box]) == 1])
 
         values = eliminate(values)
+        values = naked_twins(values)
         values = only_choice(values)
-        # values = naked_twins(values)
-
 
         # Check how many boxes have a determined value, to compare
         solved_values_after = len([box for box in values.keys() if len(values[box]) == 1])
@@ -167,11 +210,11 @@ def reduce_puzzle(values):
         if len([box for box in boxes if len(values[box]) == 0]):
             return False
 
+
     return values
 
-def search(values):
 
-    print('called')
+def search(values):
 
     "Using depth-first search and propagation, create a search tree and solve the sudoku."
     # First, reduce the puzzle using the previous function
@@ -197,69 +240,41 @@ def search(values):
             return values_new_sudoku
 
 
-def naked_twins(values):
+def is_valid(values):
+    for k, v in values.items():
 
-    twins_candidate = set([unit_key for (unit_key, unit_value) in values.items() if len(unit_value) == 2])
+        for u in units[k]:
+            if len([z for z in u if values[z] == v and len(v) == 1]) > 1:
+                return False
 
-    while len(twins_candidate) > 1:
+    return True
 
-        x_key = twins_candidate.pop()
-        x_value = values[x_key]
+def validate_and_print(v_before, v_after, method_called):
 
-        # x_candidates = [unit_key for (unit_key, unit_value) in twins_candidate.items() if unit_value == x_value]
-        #
-        # if len([box for box in peers[x_key] if values[box] == x_value]) == 2:
-        #     for box in x_unit:
-        #         if len(values[box]) > 1 and values[box] != x_value:
-        #             for digit in x_value:
-        #                 values[box] = values[box].replace(digit, '')
-        #
-        if len(x_value) == 2:
-            for x_unit in units[x_key]:
-                if len([box for box in x_unit if values[box] == x_value]) == 2:
-                    for box in x_unit:
-                        if len(values[box]) > 1 and values[box] != x_value:
-                            for digit in x_value:
-                                values[box] = values[box].replace(digit, '')
+    is_valid, k, u = validate_sudoku(v_after)
 
-        # for peer_boxes in peers[x_key]:
-        #
-        #     x_candidate_twins = [box for box in twins_candidate if values[box] == x_value]
-        #     if len(x_candadidate_twins) == 1:
-        #         for box in peer_boxes:
-        #             if len(values[box]) > 1 and values[box] != x_value:
-        #                 # print(x_value)
-        #                 # print(values[box])
-        #                 for digit in x_value:
-        #                     values[box] = values[box].replace(digit, '')
-        #                 # print(values[box])
-        #
+    if not is_valid:
+        print_box_unit(k, u, v_after, method_called)
+        print ('============================================')
+        display(v_before)
+        print('============================================')
+        display(v_after)
+        exit(0)
 
-            # if len([unit_key for unit_key in unit_boxes if values[unit_key] == x_value]) == 2:
-            #     for box in unit_boxes:
-            #         if len(values[box]) > 1 and values[box] != x_value:
-            #             # print(x_value)
-            #             # print(values[box])
-            #             for digit in x_value:
-            #                 values[box] = values[box].replace(digit, '')
-            #             # print(values[box])
+    return is_valid, k, u
 
-        # if len(x_candidates) > 0:
-        #     for unit_boxes in units[x_key]:
-        #
-        #         if len([k for k in unit_boxes if k in x_candidates]) == 1:
-        #             for box in unit_boxes:
-        #                 if len(values[box]) > 1 and values[box] != x_value:
-        #                     print (x_value)
-        #                     print (values[box])
-        #                     for digit in x_value:
-        #                         values[box] = values[box].replace(digit, '')
-        #                     print(values[box])
 
-                # y_not_twins = [k for k in y if k not in x_candidates and k != x_key and len(values[k]) > 1]
-                #
-                # for z in y_not_twins:
-                #     for digit in x_value:
-                #         values[z] = values[z].replace(digit, '')
+def validate_sudoku(values):
 
-    return values
+    for k, v in values.items():
+
+        for u in units[k]:
+            if len([z for z in u if values[z] == v and len(v) == 1]) > 1:
+                return False, k, u
+
+    return True, None, None
+
+def print_box_unit(box_key, unit_keys, values, method_called):
+    print (str(box_key) + ' at ' + method_called)
+    print (unit_keys)
+    print ([values[k] for k in unit_keys])
