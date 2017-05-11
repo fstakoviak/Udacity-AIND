@@ -13,13 +13,14 @@ boxes = cross(rows, cols)
 
 row_units = [cross(r, cols) for r in rows]
 column_units = [cross(rows, c) for c in cols]
-diagonal_units = [[rows[i] + cols[i] for i in range(len(row_units))], [rows[i] + cols[::-1][i] for i in range(len(row_units))]]
-square_units = [cross(rs, cs) for rs in ('ABC','DEF','GHI') for cs in ('123','456','789')]
+square_units = [cross(rs, cs) for rs in ('ABC', 'DEF', 'GHI') for cs in ('123', '456', '789')]
+# diagonal_units = [[rows[i] + cols[i] for i in range(len(row_units))], [rows[i] + cols[::-1][i] for i in range(len(row_units))]]
+# diagonal_units = []
 
-unitlist = row_units + column_units + square_units + diagonal_units
+unitlist = row_units + column_units + square_units
 
 units = dict((s, [u for u in unitlist if s in u]) for s in boxes)
-peers = dict((s, set(sum(units[s],[]))-set([s])) for s in boxes)
+peers = dict((s, set(sum(units[s], [])) - set([s])) for s in boxes)
 
 def assign_value(values, box, value):
     """
@@ -105,7 +106,7 @@ def naked_twins(values):
                         for box in x_unit:
                             if len(values[box]) > 1 and values[box] != x_value:
                                 for digit in x_value:
-                                    assign_value(values, box, values[box].replace(digit, ''))
+                                    values = assign_value(values, box, values[box].replace(digit, ''))
 
         solved_boxes_after = len([unit_key for unit_key in boxes if len(values[unit_key]) == 1])
 
@@ -132,11 +133,7 @@ def eliminate(values):
         box_value = values[box]
 
         for peer in peers[box]:
-            if values[peer] != box_value:
-                new_value = values[peer]
-                new_value = new_value.replace(box_value, '')
-
-                assign_value(values, peer, new_value)
+            values = assign_value(values, peer, values[peer].replace(box_value, ''))
 
     return values
 
@@ -173,7 +170,7 @@ def only_choice(values):
                         unit_keys.append(unit_key)
 
                     for u in unit_keys:
-                        assign_value(values, u, digit_key)
+                        values = assign_value(values, u, digit_key)
 
         solved_boxes_after = len([unit_key for unit_key in boxes if len(values[unit_key]) == 1])
 
@@ -190,6 +187,7 @@ def reduce_puzzle(values):
 
         values = eliminate(values)
         values = only_choice(values)
+        values = naked_twins(values)
 
         # Check how many boxes have a determined value, to compare
         solved_values_after = len([box for box in values.keys() if len(values[box]) == 1])
@@ -238,6 +236,7 @@ def solve(grid):
 
     values = grid_values(grid)
     values = search(values)
+
     return values
 
 
@@ -251,15 +250,32 @@ def is_valid(values):
     return True
 
 if __name__ == '__main__':
-    diag_sudoku_grid = '9.1....8.8.5.7..4.2.4....6...7......5..............83.3..6......9................'
-    # diag_sudoku_grid = '2.............62....1....7...6..8...3...9...7...6..4...4....8....52.............3'
-    values = solve(diag_sudoku_grid)
-    display(values)
-    print(is_valid(values))
+
+    grids = [
+        '4.....8.5.3..........7......2.....6.....8.4......1.......6.3.7.5..2.....1.4......',
+        '..5.......32..695..8..1..23.2.........7...4.........6.54..2..8..963..27.......5..',
+        '1.4.9..68956.18.34..84.695151.....868..6...1264..8..97781923645495.6.823.6.854179',
+        '5....26...9..5.84..439.6....1...4.5.....1.....6.2...7....8.956..54.3..8...61....9',
+        '5.9.2..1.4...56...8..9.3..5.87..25..654....82..15684971.82.5...7..68...3.4..7.8..',
+        '.4......8...7...5...8.......213.......9...6.......457.......9...1...9...9......1.',
+        '2.............62....1....7...6..8...3...9...7...6..4...4....8....52.............3',
+        '9.1....8.8.5.7..4.2.4....6...7......5..............83.3..6......9................',
+        '2.............62....1....7...6..8...3...9...7...6..4...4....8....52.............3',
+        '9.1....8.8.5.7..4.2.4....6...7......5..............83.3..6......9................'
+    ]
+
+    for grid in grids:
+
+        assignments = []
+        values = solve(grid)
+        print (values)
+        print (is_valid(values))
+
+
 
     try:
         from visualize import visualize_assignments
-        # visualize_assignments(assignments)
+        visualize_assignments(assignments)
         pass
     except SystemExit:
         pass
